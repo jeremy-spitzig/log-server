@@ -1,0 +1,12 @@
+{
+  "name": "log-server",
+  "version": "1.0.0",
+  "description": "Reads from /var/log and exposes an API for retrieving log entries.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Jeremy Spitzig<jpspitzig@gmail.com>",
+  "license": "ISC"
+}

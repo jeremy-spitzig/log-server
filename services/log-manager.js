@@ -46,14 +46,21 @@ class LogFileReader {
     this.fileSize = fileSize
     this.bufferSize = bufferSize
     this.position = Math.max(0, fileSize - bufferSize)
-    this.end = fileSize
+    this.end = this.position + bufferSize - 1
   }
   readRemainder() {
     const output = new stream.Readable()
+    // after the first chunk, we have to start prepending the missing newline
+    let leadingNewline = false
     output._read = () => {
       if(this.hasMore()) {
         this.readChunk().then((chunk) => {
-          const data = chunk.join('\n')
+          let data = chunk.join('\n')
+          if(leadingNewline) {
+            data = '\n' + data
+          } else {
+            leadingNewline = true
+          }
           output.push(data)
         })
       } else {
@@ -68,7 +75,7 @@ class LogFileReader {
       return Promise.resolve([])
     }
     return new Promise((resolve) => {
-      let read = this.outstanding
+      let read = ''
       const stream = fs.createReadStream(this.filePath, {
         start: this.position,
         end: this.end
@@ -77,6 +84,7 @@ class LogFileReader {
         read += chunk
       })
       stream.on('end', () => {
+        read += this.outstanding
         const lines = read.split('\n').reverse()
         // If we haven't reached the beginning of the file,
         // the last item read will be incomplete.  Save it for the
@@ -88,8 +96,8 @@ class LogFileReader {
           this.position = -1
           this.end = -1
         } else {
-          this.position = this.position - this.bufferSize
-          this.end = this.end - this.bufferSize
+          this.position -= this.bufferSize
+          this.end -= this.bufferSize
           if(this.position < 0) {
             this.position = 0
           }

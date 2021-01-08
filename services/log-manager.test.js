@@ -36,3 +36,18 @@ test('read entire file in reverse order', () => {
     }))
     .then(contents => expect(contents).toEqual('line3\nline2\nline1'))
 })
+
+test('large files are read in full', () => {
+  const expected = Array.from(Array(60), (_, index) => 'Very Very Very Very Very Long Line ' + index)
+    .reverse()
+    .join('\n')
+  expect.assertions(1)
+  let contents = ''
+  return logManager.openFile('very-large-file.log')
+    .then(logFile => logFile.readAll())
+    .then(stream => new Promise(resolve=> {
+      stream.on('data', (chunk) => contents += chunk)
+      stream.on('end', () => resolve(contents))
+    }))
+    .then(contents => expect(contents).toEqual(expected))
+})

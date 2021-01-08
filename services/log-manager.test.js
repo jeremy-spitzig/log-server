@@ -38,9 +38,7 @@ test('read entire file in reverse order', () => {
 })
 
 test('large files are read in full', () => {
-  const expected = Array.from(Array(60), (_, index) => 'Very Very Very Very Very Long Line ' + index)
-    .reverse()
-    .join('\n')
+  const expected = generateLongFileLines(60)
   expect.assertions(1)
   let contents = ''
   return logManager.openFile('very-large-file.log')
@@ -51,3 +49,24 @@ test('large files are read in full', () => {
     }))
     .then(contents => expect(contents).toEqual(expected))
 })
+
+test('only the requested number of lines is returned', () => {
+  const expected = generateLongFileLines(5)
+  expect.assertions(1)
+  let contents = ''
+  return logManager.openFile('very-large-file.log')
+    .then(logFile => logFile.readLines(5))
+    .then(stream => new Promise(resolve=> {
+      stream.on('data', (chunk) => contents += chunk)
+      stream.on('end', () => resolve(contents))
+    }))
+    .then(contents => expect(contents).toEqual(expected))
+})
+
+
+function generateLongFileLines(count) {
+  return Array.from(Array(60), (_, index) => 'Very Very Very Very Very Long Line ' + index)
+    .reverse()
+    .slice(0, count)
+    .join('\n')
+}

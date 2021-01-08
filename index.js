@@ -27,7 +27,10 @@ app.get('/*', (req, res) => {
   } else {
     promise = promise.then(logFile => logFile.readAll(req.query.filter))
   }
-  promise.then(stream => stream.pipe(res))
+  promise.then(stream => {
+      res.setHeader('Content-Type', 'text/plain')
+      stream.pipe(res)
+    })
     .catch(error => {
       switch(error.message) {
         case 'File must be within log folder.':

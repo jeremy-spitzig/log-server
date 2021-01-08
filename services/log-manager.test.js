@@ -2,9 +2,7 @@ const LogManager = require('./log-manager')
 const path = require('path')
 
 const testFilesPath = path.normalize(path.join(__dirname, '../test-files'))
-const logManager = new LogManager(testFilesPath)
-
-console.log(testFilesPath)
+const logManager = new LogManager(testFilesPath, 1024)
 
 test('throw an error if file doesn\'t exist', () => {
   expect.assertions(1)

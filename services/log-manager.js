@@ -1,5 +1,6 @@
 const fs = require('fs')
 const path = require('path')
+const stream = require('stream')
 
 const fsp = fs.promises
 
@@ -21,7 +22,7 @@ module.exports = class LogManager {
         if(!stat.isFile()) {
           throw new Error('File must be a normal file.')
         }
-        return new LogFile(fullPath)
+        return new LogFile(fullPath, this.bufferSize)
       })
   }
 }
@@ -32,6 +33,73 @@ class LogFile {
     this.filePath = filePath
   }
   readAll() {
-    return Promise.resolve(fs.createReadStream(this.filePath))
+    return fsp.stat(this.filePath)
+      .then(stat => (new LogFileReader(this.filePath, this.bufferSize, stat.size)
+        .readRemainder()))
+  }
+}
+
+class LogFileReader {
+  constructor(filePath, bufferSize, fileSize) {
+    this.outstanding = ''
+    this.filePath = filePath
+    this.fileSize = fileSize
+    this.bufferSize = bufferSize
+    this.position = Math.max(0, fileSize - bufferSize)
+    this.end = fileSize
+  }
+  readRemainder() {
+    const output = new stream.Readable()
+    output._read = () => {
+      if(this.hasMore()) {
+        this.readChunk().then((chunk) => {
+          const data = chunk.join('\n')
+          output.push(data)
+        })
+      } else {
+        output.push(null)
+      }
+    }
+    return output
+  }
+
+  readChunk() {
+    if(this.position < 0) {
+      return Promise.resolve([])
+    }
+    return new Promise((resolve) => {
+      let read = this.outstanding
+      const stream = fs.createReadStream(this.filePath, {
+        start: this.position,
+        end: this.end
+      })
+      stream.on('data', (chunk) => {
+        read += chunk
+      })
+      stream.on('end', () => {
+        const lines = read.split('\n').reverse()
+        // If we haven't reached the beginning of the file,
+        // the last item read will be incomplete.  Save it for the
+        // next chunk
+        if(lines.length > 0 && this.position > 0) {
+          this.outstanding = lines.pop()
+        }
+        if(this.position == 0) {
+          this.position = -1
+          this.end = -1
+        } else {
+          this.position = this.position - this.bufferSize
+          this.end = this.end - this.bufferSize
+          if(this.position < 0) {
+            this.position = 0
+          }
+        }
+        resolve(lines)
+      })
+    })
+  }
+
+  hasMore() {
+    return this.position >= 0
   }
 }

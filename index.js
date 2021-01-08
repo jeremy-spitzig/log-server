@@ -19,13 +19,13 @@ app.get('/*', (req, res) => {
   if(req.query.n != null) {
     const n = parseInt(req.query.n)
     if(n > 0) {
-      promise = promise.then(logFile => logFile.readLines(n))
+      promise = promise.then(logFile => logFile.readLines(n, req.query.filter))
     } else {
       res.status(400)
       res.send('Bad value for n.  Must be an integer.')
     }
   } else {
-    promise = promise.then(logFile => logFile.readAll())
+    promise = promise.then(logFile => logFile.readAll(req.query.filter))
   }
   promise.then(stream => stream.pipe(res))
     .catch(error => {

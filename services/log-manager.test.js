@@ -3,6 +3,7 @@ const path = require('path')
 
 const testFilesPath = path.normalize(path.join(__dirname, '../test-files'))
 const logManager = new LogManager(testFilesPath, 1024)
+const longLineText = 'Very Very Very Very Very Long Line '
 
 test('throw an error if file doesn\'t exist', () => {
   expect.assertions(1)
@@ -63,9 +64,39 @@ test('only the requested number of lines is returned', () => {
     .then(contents => expect(contents).toEqual(expected))
 })
 
+test('readAll can filter based on keyword', () => {
+  const expected = longLineText + '32'
+  expect.assertions(1)
+  let contents = ''
+  return logManager.openFile('very-large-file.log')
+    .then(logFile => logFile.readAll('32'))
+    .then(stream => new Promise(resolve=> {
+      stream.on('data', (chunk) => contents += chunk)
+      stream.on('end', () => resolve(contents))
+    }))
+    .then(contents => expect(contents).toEqual(expected))
+})
+
+test('readLines can filter based on keyword', () => {
+  const expected = longLineText + '53\n' +
+                   longLineText + '43\n' +
+                   longLineText + '39\n' +
+                   longLineText + '38\n' +
+                   longLineText + '37'
+  expect.assertions(1)
+  let contents = ''
+  return logManager.openFile('very-large-file.log')
+    .then(logFile => logFile.readLines(5, '3'))
+    .then(stream => new Promise(resolve=> {
+      stream.on('data', (chunk) => contents += chunk)
+      stream.on('end', () => resolve(contents))
+    }))
+    .then(contents => expect(contents).toEqual(expected))
+})
+
 
 function generateLongFileLines(count) {
-  return Array.from(Array(60), (_, index) => 'Very Very Very Very Very Long Line ' + index)
+  return Array.from(Array(60), (_, index) => longLineText + index)
     .reverse()
     .slice(0, count)
     .join('\n')

@@ -32,15 +32,15 @@ class LogFile {
     this.bufferSize = bufferSize
     this.filePath = filePath
   }
-  readAll() {
+  readAll(filter) {
     return fsp.stat(this.filePath)
       .then(stat => (new LogFileReader(this.filePath, this.bufferSize, stat.size)
-        .readRemainder()))
+        .readRemainder(filter)))
   }
-  readLines(count) {
+  readLines(count, filter) {
     return fsp.stat(this.filePath)
       .then(stat => (new LogFileReader(this.filePath, this.bufferSize, stat.size)
-        .readLines(count)))
+        .readLines(count, filter)))
   }
 }
 
@@ -53,20 +53,24 @@ class LogFileReader {
     this.position = Math.max(0, fileSize - bufferSize)
     this.end = this.position + bufferSize - 1
   }
-  readRemainder() {
+  readRemainder(filter) {
     const output = new stream.Readable()
     // after the first chunk, we have to start prepending the missing newline
-    let leadingNewline = false
+    let sentLines = 0
     output._read = () => {
       if(this.hasMore()) {
-        this.readChunk().then((chunk) => {
+        this.readChunk(filter).then((chunk) => {
           let data = chunk.join('\n')
-          if(leadingNewline) {
+          if(sentLines > 0) {
             data = '\n' + data
           } else {
-            leadingNewline = true
+            sentLines += chunk.length
           }
-          output.push(data)
+          if(chunk.length > 0) {
+            output.push(data)
+          } else {
+            output.push('')
+          }
         })
       } else {
         output.push(null)
@@ -75,14 +79,14 @@ class LogFileReader {
     return output
   }
 
-  readLines(count) {
+  readLines(count, filter) {
     let remaining = count
     const output = new stream.Readable()
     // after the first chunk, we have to start prepending the missing newline
     let leadingNewline = false
     output._read = () => {
       if(this.hasMore() && remaining > 0) {
-        this.readChunk().then((chunk) => {
+        this.readChunk(filter).then((chunk) => {
           if(chunk.length > remaining) {
             chunk = chunk.slice(0, remaining)
           }
@@ -102,7 +106,7 @@ class LogFileReader {
     return output
   }
 
-  readChunk() {
+  readChunk(filter) {
     if(this.position < 0) {
       return Promise.resolve([])
     }
@@ -134,7 +138,11 @@ class LogFileReader {
             this.position = 0
           }
         }
-        resolve(lines)
+        if(filter) {
+          resolve(lines.filter(line => line.includes(filter)))
+        } else {
+          resolve(lines)
+        }
       })
     })
   }

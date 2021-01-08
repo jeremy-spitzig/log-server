@@ -37,6 +37,11 @@ class LogFile {
       .then(stat => (new LogFileReader(this.filePath, this.bufferSize, stat.size)
         .readRemainder()))
   }
+  readLines(count) {
+    return fsp.stat(this.filePath)
+      .then(stat => (new LogFileReader(this.filePath, this.bufferSize, stat.size)
+        .readLines(count)))
+  }
 }
 
 class LogFileReader {
@@ -55,6 +60,33 @@ class LogFileReader {
     output._read = () => {
       if(this.hasMore()) {
         this.readChunk().then((chunk) => {
+          let data = chunk.join('\n')
+          if(leadingNewline) {
+            data = '\n' + data
+          } else {
+            leadingNewline = true
+          }
+          output.push(data)
+        })
+      } else {
+        output.push(null)
+      }
+    }
+    return output
+  }
+
+  readLines(count) {
+    let remaining = count
+    const output = new stream.Readable()
+    // after the first chunk, we have to start prepending the missing newline
+    let leadingNewline = false
+    output._read = () => {
+      if(this.hasMore() && remaining > 0) {
+        this.readChunk().then((chunk) => {
+          if(chunk.length > remaining) {
+            chunk = chunk.slice(0, remaining)
+          }
+          remaining -= chunk.length
           let data = chunk.join('\n')
           if(leadingNewline) {
             data = '\n' + data

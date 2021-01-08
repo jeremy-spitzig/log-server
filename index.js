@@ -1,6 +1,9 @@
 const express = require('express')
-const LogManager = require('./services/log-manager')
+const lm = require('./services/log-manager')
 const app = express()
+
+const LogManager = lm.LogManager
+const constants = lm.constants
 
 const PORT = process.env.PORT || 80
 const LOG_DIRECTORY = process.env.LOG_DIRECTORY || '/var/log'
@@ -32,11 +35,20 @@ app.get('/*', (req, res) => {
       stream.pipe(res)
     })
     .catch(error => {
+      console.log(error)
       switch(error.message) {
-        case 'File must be within log folder.':
-        case 'File must be a normal file.':
+        case constants.errors.ERROR_OUTSIDE_LOG_FOLDER:
+        case constants.errors.ERROR_NONNORMAL_FILE:
           res.status(400)
           res.send(error.message)
+          break
+        case constants.errors.ERROR_FILE_NOT_FOUND:
+            res.status(404)
+          res.send(error.message)
+          break
+        default:
+          res.status(500)
+          res.send('An internal error occurred')
       }
     })
 })

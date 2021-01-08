@@ -1,4 +1,4 @@
-const LogManager = require('./log-manager')
+const LogManager = require('./log-manager').LogManager
 const path = require('path')
 
 const testFilesPath = path.normalize(path.join(__dirname, '../test-files'))
@@ -9,7 +9,7 @@ test('throw an error if file doesn\'t exist', () => {
   expect.assertions(1)
   return logManager.openFile('non-existent-file.log')
     .catch(error => expect(error.message)
-      .toEqual(expect.stringMatching(/^ENOENT: no such file or directory/)))
+      .toEqual(expect.stringMatching('File not found.')))
 })
 
 test('throw an error if file is outside log directory', () => {

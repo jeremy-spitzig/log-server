@@ -3,8 +3,17 @@ const path = require('path')
 const stream = require('stream')
 
 const fsp = fs.promises
-
-module.exports = class LogManager {
+const ERROR_OUTSIDE_LOG_FOLDER = 'File must be within log folder.'
+const ERROR_NONNORMAL_FILE = 'File must be a normal file.'
+const ERROR_FILE_NOT_FOUND = 'File not found.'
+module.exports.constants = {
+  errors: {
+    ERROR_OUTSIDE_LOG_FOLDER,
+    ERROR_NONNORMAL_FILE,
+    ERROR_FILE_NOT_FOUND
+  }
+}
+module.exports.LogManager = class LogManager {
   constructor(logDirectory, bufferSize) {
     this.logDirectory = logDirectory
     this.bufferSize = bufferSize
@@ -14,13 +23,16 @@ module.exports = class LogManager {
     const fullPath = path.join(this.logDirectory, relativePath)
     const relative = path.relative(this.logDirectory, fullPath)
     if(!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
-      return Promise.reject(new Error('File must be within log folder.'))
+      return Promise.reject(new Error(ERROR_OUTSIDE_LOG_FOLDER))
     }
     return fsp.access(fullPath, fs.constants.F_OK | fs.constants.R_OK)
+      .catch(() => {
+        throw new Error(ERROR_FILE_NOT_FOUND)
+      })
       .then(() => fsp.stat(fullPath))
       .then(stat => {
         if(!stat.isFile()) {
-          throw new Error('File must be a normal file.')
+          throw new Error(ERROR_NONNORMAL_FILE)
         }
         return new LogFile(fullPath, this.bufferSize)
       })

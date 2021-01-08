@@ -26,3 +26,15 @@ test('throw an error if file is directory', () => {
     .catch(error => expect(error.message)
       .toEqual('File must be a normal file.'))
 })
+
+test('read entire file in reverse order', () => {
+  expect.assertions(1)
+  let contents = ''
+  return logManager.openFile('good-file.log')
+    .then(logFile => logFile.readAll())
+    .then(stream => new Promise(resolve=> {
+      stream.on('data', (chunk) => contents += chunk)
+      stream.on('end', () => resolve(contents))
+    }))
+    .then(contents => expect(contents).toEqual('line3\nline2\nline1'))
+})

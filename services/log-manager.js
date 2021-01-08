@@ -32,6 +32,6 @@ class LogFile {
     this.filePath = filePath
   }
   readAll() {
-    return fs.createReadStream(this.filePath)
+    return Promise.resolve(fs.createReadStream(this.filePath))
   }
 }
